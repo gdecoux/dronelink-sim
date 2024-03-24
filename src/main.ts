@@ -4,10 +4,11 @@ import Point from '@arcgis/core/geometry/Point';
 import Polyline from '@arcgis/core/geometry/Polyline';
 import SpatialReference from '@arcgis/core/geometry/SpatialReference';
 import SceneView from '@arcgis/core/views/SceneView';
+import { addFrameTask } from '@arcgis/core/core/scheduling';
 import { DroneGraphic } from './drone';
 import { DroneMiniView } from './drone-view';
 import './style.css';
-import { loadMission } from './util';
+import { getTimeline, loadMission } from './util';
 
 const location = new Point({
   x: -97.79696873787297,
@@ -15,10 +16,6 @@ const location = new Point({
   z: 100,
   spatialReference: SpatialReference.WGS84,
 });
-
-function jsonDump<T extends __esri.JSONSupport>(value: T) {
-  console.log(JSON.stringify(value.toJSON(), null, 2));
-}
 
 const map = new Map({
   // basemap: 'dark-gray-vector',
@@ -34,18 +31,14 @@ const view = new SceneView({
       spatialReference: {
         wkid: 102100,
       },
-      x: -10886659.506281568,
-      y: 3548458.7443418144,
-      z: 281.8982653878629,
+      x: -10886900.116462594,
+      y: 3548358.3770633177,
+      z: 447.7138755274936,
     },
-    heading: 64.93411755712467,
-    tilt: 52.11175553948697,
+    heading: 25.353635365080887,
+    tilt: 43.27360846322571,
   },
 });
-
-(window as any).dumpCamera = () => {
-  jsonDump(view.camera);
-};
 
 const mission = await loadMission('plan-3.dronelink');
 
@@ -83,34 +76,26 @@ const graphic = new Graphic({
 
 view.graphics.add(graphic);
 
+const timeline = await getTimeline(mission);
+
+// simple hacky animate for now
 let paused = false;
-mission.simulate(null, null, null, null, (mission, timeline) => {
-  if (mission.complete) {
-    console.log(timeline.frames.length);
+let frameIndex = 0;
+let elapsedTime = 0;
+setInterval(() => {
+  if (paused) return;
 
-    let index = 0;
-
-    setInterval(() => {
-      if (paused) {
-        return;
-      }
-      if (index >= timeline.frames.length) {
-        index = 0;
-      }
-
-      const frame = timeline.frames[index];
-
-      previewView.setFromFrame(frame, takeoffElevation);
-      drone.updateFromFrame(frame, takeoffElevation);
-
-      index++;
-    }, 10);
-
-    return false;
+  if (frameIndex >= timeline.frames.length) {
+    frameIndex = 0;
+    elapsedTime = 0;
   }
 
-  return true;
-});
+  const frame = timeline.frames[frameIndex];
+  previewView.setFromFrame(frame, takeoffElevation);
+  drone.updateFromFrame(frame, takeoffElevation);
+
+  frameIndex++;
+}, 50);
 
 const button = document.getElementById('toggle-button')!;
 button.addEventListener('click', () => {

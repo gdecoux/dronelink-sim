@@ -1,4 +1,4 @@
-import { Mission, Serialization } from 'dronelink-kernel';
+import { Mission, Serialization, Timeline } from 'dronelink-kernel';
 
 export async function loadMission(url: string) {
   const _data = await fetch(url).then(async (res) => {
@@ -9,4 +9,16 @@ export async function loadMission(url: string) {
   const mission = Mission.createFromComponent(component);
 
   return mission;
+}
+
+export async function getTimeline(mission: Mission): Promise<Timeline> {
+  return new Promise((resolve) => {
+    mission.simulate(null, null, null, null, (mission, timeline) => {
+      if (mission.complete) {
+        resolve(timeline);
+      }
+
+      return true;
+    });
+  });
 }
